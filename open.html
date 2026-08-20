@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Open Kaizen Family</title>
+
+    <!--
+  ============================================================================
+   The bridge page. Findings #46 and #48, 2026-08-20.
+
+   WHY IT EXISTS
+   Every link Kaizen emails used to point at `kaizenfamily://…`, a custom
+   scheme. Two consequences, both confirmed on a real device:
+
+     · Messaging apps and mail clients linkify http and https and leave unknown
+       schemes as plain text, so an invitation could not be opened by its
+       recipient at all.
+     · Chrome refuses to follow a redirect into a custom scheme, so Supabase's
+       confirmation and password-reset links landed on a blank page. Email
+       confirmation still succeeded server-side first — it worked and looked
+       broken. Password reset genuinely failed, because it needs the app to
+       open so a new password can be typed.
+
+   Android resolves a custom scheme fine from a genuine link activation. It is
+   only automatic redirects and unlinkified text that fail. So this page exists
+   to be one real link that a person taps.
+
+   TWO THINGS IT MUST GET RIGHT
+
+   1. FORWARD SUPABASE'S TOKENS. A password reset carries its session in the
+      URL FRAGMENT (`#access_token=…`), and PKCE flows use `?code=`. Dropping
+      either would leave the app opening with no session — the flow would still
+      be broken, just further along. Everything is passed through.
+
+   2. NEVER FORWARD ANYTHING BUT OUR OWN SCHEME. A page that redirects to
+      whatever it is handed is an open redirect, and this one sits on the
+      company's domain, which is exactly what makes such a link convincing.
+      The allowlist below is enforced here as well as in the app, because this
+      page performs the navigation and must not trust its own query string.
+  ============================================================================
+-->
+
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 32px 24px;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        background: #f5f3ff;
+        color: #1e1b30;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+      }
+      main {
+        width: 100%;
+        max-width: 420px;
+      }
+      .brand {
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #5b3fd6;
+        font-weight: 600;
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 26px;
+        line-height: 1.25;
+        margin: 0 0 12px;
+      }
+      p {
+        font-size: 16px;
+        line-height: 1.55;
+        color: #4b4668;
+        margin: 0 0 24px;
+      }
+      a.primary {
+        display: block;
+        text-align: center;
+        text-decoration: none;
+        background: #5b3fd6;
+        color: #fff;
+        font-weight: 600;
+        font-size: 17px;
+        padding: 17px 20px;
+        border-radius: 999px;
+      }
+      a.secondary {
+        display: block;
+        text-align: center;
+        text-decoration: none;
+        color: #5b3fd6;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 16px;
+      }
+      .note {
+        font-size: 14px;
+        color: #6b6690;
+        line-height: 1.55;
+        margin-top: 28px;
+      }
+      .error {
+        background: #fff;
+        border: 1px solid #f0c6c6;
+        border-radius: 14px;
+        padding: 20px;
+      }
+      .error h1 {
+        font-size: 20px;
+      }
+      footer {
+        margin-top: auto;
+        padding-top: 40px;
+        font-size: 13px;
+        color: #8a86a6;
+      }
+      footer a {
+        color: #8a86a6;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="brand">Kaizen Family</p>
+      <div id="content">
+        <h1>Opening Kaizen…</h1>
+        <p>One moment.</p>
+      </div>
+    </main>
+
+    <footer>
+      <a href="https://kaizengroupint.com/">kaizengroupint.com</a> ·
+      <a href="https://kaizengroupint.com/support.html">Support</a>
+    </footer>
+
+    <script>
+      (function () {
+        // Must match ALLOWED_SCHEMES in src/lib/links.ts.
+        var ALLOWED = [
+          'kaizenfamily://',
+          'kaizenfamily-dev://',
+          'kaizenfamily-preview://',
+        ];
+        var PLAY =
+          'https://play.google.com/store/apps/details?id=com.kaizengroup.kaizenfamily';
+
+        var content = document.getElementById('content');
+
+        function esc(s) {
+          return String(s).replace(/[&<>"']/g, function (c) {
+            return {
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;',
+            }[c];
+          });
+        }
+
+        function fail(heading, body) {
+          content.className = 'error';
+          content.innerHTML =
+            '<h1>' +
+            esc(heading) +
+            '</h1><p>' +
+            esc(body) +
+            '</p>' +
+            '<a class="primary" href="' +
+            PLAY +
+            '">Get Kaizen Family</a>';
+        }
+
+        var params = new URLSearchParams(window.location.search);
+        var to = params.get('to');
+
+        if (!to) {
+          fail(
+            'This link is incomplete',
+            'It is missing the part that says where to go. Ask whoever sent it for a fresh one.',
+          );
+          return;
+        }
+
+        var allowed = ALLOWED.some(function (s) {
+          return to.indexOf(s) === 0;
+        });
+        if (!allowed) {
+          // Deliberately says nothing about what was attempted.
+          fail(
+            'This link is not valid',
+            'Kaizen can only open its own links. Ask whoever sent it for a fresh one.',
+          );
+          return;
+        }
+
+        //  Carry everything Supabase added. `code` and friends arrive as query
+        //  parameters; a password reset's session arrives in the fragment. Losing
+        //  either would open the app with nothing to act on.
+        var extras = [];
+        params.forEach(function (value, key) {
+          if (key !== 'to')
+            extras.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+        });
+
+        var target = to;
+        if (extras.length)
+          target += (target.indexOf('?') === -1 ? '?' : '&') + extras.join('&');
+        if (window.location.hash) target += window.location.hash;
+
+        content.innerHTML =
+          '<h1>You’re nearly there</h1>' +
+          '<p>Tap below to finish in the Kaizen Family app.</p>' +
+          '<a class="primary" id="go">Open Kaizen Family</a>' +
+          '<a class="secondary" href="' +
+          PLAY +
+          '">I don’t have the app yet</a>' +
+          '<p class="note">Tapping the button is required — a browser will not open an ' +
+          'app on its own. If nothing happens, install Kaizen Family and tap it again.</p>';
+
+        //  href is set as a property rather than interpolated into the HTML above,
+        //  so the value can never be parsed as markup.
+        document.getElementById('go').setAttribute('href', target);
+      })();
+    </script>
+  </body>
+</html>
