@@ -172,7 +172,7 @@
 
     <main class="wrap">
       <h1>Kaizen Family — Privacy Policy</h1>
-      <p class="updated">Last updated 13 August 2026</p>
+      <p class="updated">Last updated 24 August 2026</p>
 
       <p>
         Kaizen Family holds the ordinary details of running a household — who is where,
@@ -244,6 +244,15 @@
           and how long you have to cook on a weeknight.
         </li>
         <li>Your weekly grocery budget, if you set one.</li>
+        <li>
+          Anniversaries and other family dates you record — the label you give one and its
+          date, alongside the member birthdays described above.
+        </li>
+        <li>
+          Daily Declarations: the title and words of anything your family writes to read
+          each morning, and which one is currently in use. These are written by you and
+          stored for your household only; they are not sent to the assistant.
+        </li>
         <li>
           <strong>Anything you send to the Family Inbox</strong> — the text you paste, and
           any photograph or screenshot you upload.
@@ -330,9 +339,11 @@
         <p>
           <strong>Nothing the assistant suggests is saved until you accept it.</strong>
           Suggestions are shown to you and only become an entry in your calendar or your
-          list when you tap to add them. That is enforced in our own architecture, not
-          left to careful handling: the server component that talks to Claude has no
-          ability to write to your calendar or task list at all.
+          list when you tap to add them. That is enforced in the database itself rather
+          than left to careful handling: the server component that talks to Claude has had
+          its permission to write to your calendar, tasks, meals and shopping list
+          withdrawn, so an attempt to do so is refused by the database whatever the
+          software asks for. It records only the suggestion, for you to accept or discard.
         </p>
       </div>
 
