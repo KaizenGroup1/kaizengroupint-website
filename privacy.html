@@ -72,7 +72,17 @@
         padding: 3rem 0 1rem;
       }
       h1 {
-        font-size: clamp(1.7rem, 4.5vw, 2.4rem);
+        /* Measured, not guessed. The floor used to be 1.7rem, which WINS on a
+           phone - 27.2px against the 4.5vw a 375px viewport gives - so this
+           title wrapped onto two lines on every handset. Rendered at 320 and
+           375 and stepped down until it fit: the ceiling is 5.73vw at 375 and
+           5.63vw at 320, so 5.4vw carries about 6% margin. The stack resolves
+           to Roboto on Android, which is narrower than the Segoe UI it was
+           measured in, so the real margin is larger.
+           Only this page and privacy.html changed. "Support" already fits, and
+           "Delete your Kaizen Family account and data" is 42 characters - one
+           line would need ~16px and read worse than wrapping. */
+        font-size: clamp(1rem, 5.4vw, 2.4rem);
         line-height: 1.2;
         letter-spacing: -0.02em;
         margin: 0 0 0.5rem;
