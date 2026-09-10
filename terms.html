@@ -72,7 +72,17 @@
         padding: 3rem 0 1rem;
       }
       h1 {
-        font-size: clamp(1.7rem, 4.5vw, 2.4rem);
+        /* Measured, not guessed. The floor used to be 1.7rem, which WINS on a
+           phone - 27.2px against the 4.5vw a 375px viewport gives - so this
+           title wrapped onto two lines on every handset. Rendered at 320 and
+           375 and stepped down until it fit: the ceiling is 5.73vw at 375 and
+           5.63vw at 320, so 5.4vw carries about 6% margin. The stack resolves
+           to Roboto on Android, which is narrower than the Segoe UI it was
+           measured in, so the real margin is larger.
+           Only this page and privacy.html changed. "Support" already fits, and
+           "Delete your Kaizen Family account and data" is 42 characters - one
+           line would need ~16px and read worse than wrapping. */
+        font-size: clamp(1rem, 5.4vw, 2.4rem);
         line-height: 1.2;
         letter-spacing: -0.02em;
         margin: 0 0 0.5rem;
@@ -255,12 +265,16 @@
           for renewal within 24 hours of the period ending.
         </li>
         <li>
-          <strong>Managing and cancelling:</strong> in your Apple Account or Google
-          account settings — see the <a href="/support.html">support page</a> for the
-          steps. Deleting the app does not cancel a subscription.
+          <!-- Store-neutral on purpose. This page cannot know which store a reader
+               bought from, and naming both made one of them wrong for everybody.
+               The app itself resolves the name per platform through storeName();
+               support.html names both deliberately, because it gives the steps. -->
+          <strong>Managing and cancelling:</strong> in your app store account settings
+          — see the <a href="/support.html">support page</a> for the steps. Deleting
+          the app does not cancel a subscription.
         </li>
         <li>
-          <strong>Refunds</strong> are handled by Apple or Google under their policies. We
+          <strong>Refunds</strong> are handled by the app store under its policies. We
           cannot issue them.
         </li>
         <li>
