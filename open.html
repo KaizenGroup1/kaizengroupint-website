@@ -39,6 +39,20 @@
       company's domain, which is exactly what makes such a link convincing.
       The allowlist below is enforced here as well as in the app, because this
       page performs the navigation and must not trust its own query string.
+
+   WHICH STORE — backlog item 31, 13 September 2026
+   Until the iOS app was released this page sent everybody to Google Play,
+   iPhones included. It now asks the browser: iPhone and iPad get the App
+   Store, Android gets Google Play, and anything else — a desktop, an unknown
+   browser — is offered both rather than a guess. A wrong store is a dead end;
+   two honest choices are not.
+
+   ⚠️ iPadOS Safari asks for the desktop site by default and says it is a Mac.
+   A Mac has no touch screen, so a "Macintosh" that reports touch points is an
+   iPad. Without that check every iPad would be offered both stores.
+
+   The page is exercised in a browser environment by
+   __tests__/unit/website-open-stores.test.ts.
   ============================================================================
 -->
 
@@ -99,6 +113,9 @@
         padding: 17px 20px;
         border-radius: 999px;
       }
+      a.primary + a.primary {
+        margin-top: 12px;
+      }
       a.secondary {
         display: block;
         text-align: center;
@@ -158,8 +175,34 @@
         ];
         var PLAY =
           'https://play.google.com/store/apps/details?id=com.kaizengroup.kaizenfamily';
+        // The `ascAppId` in eas.json.
+        var APP_STORE = 'https://apps.apple.com/app/id6802451888';
 
         var content = document.getElementById('content');
+
+        function platform() {
+          var ua = navigator.userAgent || '';
+          if (/Android/i.test(ua)) return 'android';
+          if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+          //  iPadOS in desktop mode — see the note at the top of this file.
+          if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return 'ios';
+          return 'unknown';
+        }
+
+        //  One link where the platform is known, both where it is not. The URLs
+        //  are the constants above, never anything from the query string.
+        function storeLinks(className, knownLabel) {
+          function link(href, label) {
+            return '<a class="' + className + '" href="' + href + '">' + label + '</a>';
+          }
+          var os = platform();
+          if (os === 'ios') return link(APP_STORE, knownLabel);
+          if (os === 'android') return link(PLAY, knownLabel);
+          return (
+            link(APP_STORE, 'Get it on the App Store') +
+            link(PLAY, 'Get it on Google Play')
+          );
+        }
 
         function esc(s) {
           return String(s).replace(/[&<>"']/g, function (c) {
@@ -181,9 +224,7 @@
             '</h1><p>' +
             esc(body) +
             '</p>' +
-            '<a class="primary" href="' +
-            PLAY +
-            '">Get Kaizen Family</a>';
+            storeLinks('primary', 'Get Kaizen Family');
         }
 
         var params = new URLSearchParams(window.location.search);
@@ -227,9 +268,7 @@
           '<h1>You’re nearly there</h1>' +
           '<p>Tap below to finish in the Kaizen Family app.</p>' +
           '<a class="primary" id="go">Open Kaizen Family</a>' +
-          '<a class="secondary" href="' +
-          PLAY +
-          '">I don’t have the app yet</a>' +
+          storeLinks('secondary', 'I don’t have the app yet') +
           '<p class="note">Tapping the button is required — a browser will not open an ' +
           'app on its own. If nothing happens, install Kaizen Family and tap it again.</p>';
 
