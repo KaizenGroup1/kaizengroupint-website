@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["64L632J8QR.com.kaizengroup.kaizenfamily"],
+        "components": [
+          {
+            "/": "/open.html",
+            "comment": "The bridge page only. Every other page on this domain — privacy, terms, support — must keep opening in the browser, because Apple's reviewer opens them."
+          }
+        ]
+      }
+    ]
+  }
+}
