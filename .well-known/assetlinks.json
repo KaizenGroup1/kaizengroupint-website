@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kaizengroup.kaizenfamily",
+      "sha256_cert_fingerprints": [
+        "A3:17:14:77:43:77:2A:05:F5:1E:E2:C4:62:8E:78:54:F7:FE:DC:21:80:50:28:73:49:79:C6:E8:06:6D:41:40",
+        "44:26:9A:97:60:22:60:9A:2E:B9:6B:58:51:93:D7:10:70:FD:09:76:A3:E0:24:D0:BD:45:03:5B:05:83:21:2D"
+      ]
+    }
+  }
+]
