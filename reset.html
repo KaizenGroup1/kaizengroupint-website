@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <!--  The one-time token is in this page's own URL. `no-referrer` keeps it
+          out of the Referer header of anything this page loads or links to. -->
+    <meta name="referrer" content="no-referrer" />
+    <title>Set a new password — Kaizen Family</title>
+
+    <!--
+  ============================================================================
+   The password-reset gate. Backlog item 52, 2026-10-01.
+
+   WHY IT EXISTS
+   Password reset had never worked for anybody — not once, for any user, since
+   the app shipped. Not because the app was wrong: because the one-time link
+   was being SPENT BEFORE THE HUMAN TAPPED IT. Read out of Supabase's
+   `auth_logs` on 1 October, Eastern time:
+
+     4:49:42 PM   WhatsApp/2.23.20.0 fetched the link — Supabase issued it a
+                  session, and the token was gone
+     4:51:34 PM   the owner's iPhone: 403, "One-time token not found"
+     4:54:10 PM   something fetched it 15 seconds ahead of the owner
+     4:54:25 PM   the owner's iPhone: 403 again
+
+   Mail apps, messengers and corporate link scanners FETCH links to build a
+   preview. A GET of Supabase's `/auth/v1/verify` is not a preview — it is the
+   redemption. So the person who asked for the reset arrives second, every
+   time, and is told the link has expired. Nothing in the app can fix that: by
+   the time the app is involved the token is already spent. Supabase documents
+   the problem under "Limitations — email prefetching", and this page is their
+   Option 2.
+
+   WHAT IT DOES
+   The recovery email no longer links to `/auth/v1/verify`. It links HERE,
+   carrying the verify URL as a query parameter, and the redemption happens
+   when a human presses the button. Scanners fetch pages. They do not press
+   buttons.
+
+   THE VERIFY URL IS NEVER IN THE DELIVERED HTML
+   It is not written into an `href`, and it is not put in the DOM at all — the
+   click handler performs the navigation. A scanner that fetched this page and
+   then crawled every link it found would still not find the token. That is the
+   whole point of the page, so
+   `__tests__/unit/website-reset-page.test.ts` asserts it.
+
+   THREE THINGS IT MUST REFUSE, BECAUSE IT SITS ON THE COMPANY'S DOMAIN
+   A page that redirects to whatever it is handed is an open redirect, and one
+   on `kaizengroupint.com` is exactly what makes a phishing link convincing. So
+   the URL in the query string is checked three ways before the button will go
+   anywhere:
+
+     1. it must be `/auth/v1/verify` on one of OUR OWN Supabase projects;
+     2. it must say `type=recovery` — this page is for password resets and
+        nothing else;
+     3. its own `redirect_to` must come back to our bridge page, so a token
+        cannot be redeemed and the resulting session handed to someone else's
+        site.
+
+   The project refs below are not secrets — the production one is compiled into
+   every copy of the app on both stores. They are here as an ALLOWLIST.
+
+   WHAT HAPPENS NEXT, AND WHY THERE IS A SECOND TAP
+   Supabase redeems the token and redirects to `open.html`, the bridge that
+   turns an https link into a real tap on `kaizenfamily://` — a browser will
+   not open an app on its own (finding #48). That page is unchanged and already
+   proven on both phones. The app, the bridge, and the emails the app asks for
+   are all untouched by this: the only changes are this file and the "Reset
+   password" template in the Supabase dashboard.
+
+   THE EMAIL TEMPLATE THIS PAGE EXPECTS — identical in kaizen-dev and
+   kaizen-prod, and `confirmation_url` MUST BE LAST:
+
+     <a href="https://kaizengroupint.com/reset.html?confirmation_url={{ .ConfirmationURL }}">
+       Set a new password
+     </a>
+
+   ⚠️ LAST, because Supabase substitutes that URL raw — with its own `?` and
+   `&` intact — so the only way to recover it whole is to take everything after
+   `confirmation_url=` to the end of the query string. Anything placed after it
+   would be swallowed into the token.
+  ============================================================================
+-->
+
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 32px 24px;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        background: #f5f3ff;
+        color: #1e1b30;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+      }
+      main {
+        width: 100%;
+        max-width: 420px;
+      }
+      .brand {
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #5b3fd6;
+        font-weight: 600;
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 26px;
+        line-height: 1.25;
+        margin: 0 0 12px;
+      }
+      p {
+        font-size: 16px;
+        line-height: 1.55;
+        color: #4b4668;
+        margin: 0 0 24px;
+      }
+      button.primary {
+        display: block;
+        width: 100%;
+        border: 0;
+        font-family: inherit;
+        text-align: center;
+        background: #5b3fd6;
+        color: #fff;
+        font-weight: 600;
+        font-size: 17px;
+        padding: 17px 20px;
+        border-radius: 999px;
+      }
+      button.primary[disabled] {
+        opacity: 0.65;
+      }
+      a.secondary {
+        display: block;
+        text-align: center;
+        text-decoration: none;
+        color: #5b3fd6;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 16px;
+      }
+      .note {
+        font-size: 14px;
+        color: #6b6690;
+        line-height: 1.55;
+        margin-top: 28px;
+      }
+      .error {
+        background: #fff;
+        border: 1px solid #f0c6c6;
+        border-radius: 14px;
+        padding: 20px;
+      }
+      .error h1 {
+        font-size: 20px;
+      }
+      footer {
+        margin-top: auto;
+        padding-top: 40px;
+        font-size: 13px;
+        color: #8a86a6;
+      }
+      footer a {
+        color: #8a86a6;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="brand">Kaizen Family</p>
+      <div id="content">
+        <h1>Checking your link…</h1>
+        <p>One moment.</p>
+      </div>
+    </main>
+
+    <footer>
+      <a href="https://kaizengroupint.com/">kaizengroupint.com</a> ·
+      <a href="https://kaizengroupint.com/support.html">Support</a>
+    </footer>
+
+    <script>
+      (function () {
+        //  Our own Supabase projects — an allowlist, not configuration. The
+        //  production ref is already public: it ships inside the app.
+        var VERIFY = [
+          'https://tupqedpuvxlamdtjlbgh.supabase.co/auth/v1/verify?', // kaizen-prod
+          'https://fcwiclknquderdsegscr.supabase.co/auth/v1/verify?', // kaizen-dev
+        ];
+        //  Where a redeemed token may send somebody: our bridge page, and
+        //  nowhere else. Must match OPEN_PAGE in src/lib/links.ts.
+        var BRIDGE = 'https://kaizengroupint.com/open.html?';
+
+        var content = document.getElementById('content');
+
+        function esc(s) {
+          return String(s).replace(/[&<>"']/g, function (c) {
+            return {
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;',
+            }[c];
+          });
+        }
+
+        //  Deliberately says nothing about what was in the link. Somebody who
+        //  needs a new one needs instructions, not diagnostics.
+        function fail(heading, body) {
+          content.className = 'error';
+          content.innerHTML =
+            '<h1>' +
+            esc(heading) +
+            '</h1><p>' +
+            esc(body) +
+            '</p>' +
+            '<a class="secondary" href="https://kaizengroupint.com/support.html">' +
+            'Contact support</a>';
+        }
+
+        function isOurVerifyUrl(url) {
+          return VERIFY.some(function (prefix) {
+            return url.indexOf(prefix) === 0;
+          });
+        }
+
+        //  Hand-parsed rather than with `URL`, for the reason the app's
+        //  links.ts gives: a malformed link must not throw, it must be refused.
+        function param(url, name) {
+          var queryAt = url.indexOf('?');
+          if (queryAt < 0) return null;
+          var pairs = url.slice(queryAt + 1).split('&');
+          for (var i = 0; i < pairs.length; i += 1) {
+            var equals = pairs[i].indexOf('=');
+            if (equals <= 0) continue;
+            if (pairs[i].slice(0, equals) !== name) continue;
+            return pairs[i].slice(equals + 1);
+          }
+          return null;
+        }
+
+        function decodeOnce(value) {
+          try {
+            return decodeURIComponent(value);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        //  ⚠️ EVERYTHING AFTER `confirmation_url=`, not one `&`-separated
+        //  field. Supabase substitutes the verify URL raw, so its own query
+        //  string becomes part of ours. The template puts this parameter last
+        //  for exactly this reason.
+        var query = String(window.location.search || '').replace(/^\?/, '');
+        var marker = 'confirmation_url=';
+        var at = query.indexOf(marker);
+        //  At the start, or after an `&` — never the tail of some other name.
+        while (at > 0 && query.charAt(at - 1) !== '&') {
+          at = query.indexOf(marker, at + 1);
+        }
+
+        if (at < 0 || !query.slice(at + marker.length)) {
+          fail(
+            'This link is incomplete',
+            'It is missing the part that proves it came from us. Open Kaizen Family, ' +
+              'tap Forgot password, and we will send a fresh one.',
+          );
+          return;
+        }
+
+        //  The value may arrive raw or escaped once, depending on what the mail
+        //  client did to it. Unescape only as far as it takes to recognise one
+        //  of our own projects, and no further — the same rule, and the same
+        //  reason, as `routeFromBridgeUrl` in the app.
+        var verifyUrl = query.slice(at + marker.length);
+        for (var attempt = 0; attempt < 4 && !isOurVerifyUrl(verifyUrl); attempt += 1) {
+          if (verifyUrl.indexOf('%') < 0) break;
+          var next = decodeOnce(verifyUrl);
+          if (next === null || next === verifyUrl) break;
+          verifyUrl = next;
+        }
+
+        var destination = param(verifyUrl, 'redirect_to');
+        var decodedDestination = destination === null ? null : decodeOnce(destination);
+
+        var usable =
+          isOurVerifyUrl(verifyUrl) &&
+          param(verifyUrl, 'type') === 'recovery' &&
+          decodedDestination !== null &&
+          decodedDestination.indexOf(BRIDGE) === 0;
+
+        if (!usable) {
+          fail(
+            'This link is not valid',
+            'Kaizen can only act on its own password-reset links. Open Kaizen Family, ' +
+              'tap Forgot password, and we will send a fresh one.',
+          );
+          return;
+        }
+
+        content.innerHTML =
+          '<h1>Set a new password</h1>' +
+          '<p>Tap below and Kaizen Family will open so you can choose one.</p>' +
+          '<button class="primary" id="go" type="button">Set a new password</button>' +
+          '<p class="note">The button matters: mail apps and messaging apps often open ' +
+          'links on their own to show a preview, and this link can only be used once. ' +
+          'Waiting for your tap is what stops it being used up before you get here. It ' +
+          'works for one hour from when we sent it.</p>';
+
+        var button = document.getElementById('go');
+        var going = false;
+        button.addEventListener('click', function () {
+          //  A second tap would redeem a token that is already spent and land
+          //  the person on "this link has expired", so there is only ever one.
+          if (going) return;
+          going = true;
+          button.setAttribute('disabled', 'disabled');
+          button.textContent = 'Opening Kaizen Family…';
+          //  The URL reaches the page here and nowhere else: never in an href,
+          //  never in the DOM, so a scanner crawling this page cannot find it.
+          window.location.href = verifyUrl;
+        });
+      })();
+    </script>
+  </body>
+</html>
